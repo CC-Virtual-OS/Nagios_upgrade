@@ -32,7 +32,6 @@ The variables are listed below :
 | `sybase_plugins_dir` | "/usr/lib64/nagios/sybase_plugins" | |
 | `base_plugins_dir` | "/usr/lib64/nagios/base_plugins" | |
 
-<<<<<<< HEAD
 =======
 
 
@@ -40,6 +39,5 @@ The variables are listed below :
 
 ## Authors
 
->>>>>>> 2dcde851c1c93b9e55327f5530845a8211949a8d
  - Marco Simonetti [e4452](mailto:guest.simonetti.m@igt.com)
  - Danilo Abbasciano [e2594](mailto:guest.abbasciano.d@igt.com)
