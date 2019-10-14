@@ -1,0 +1,135 @@
+---
+
+  - name: Stop servizio nrpe
+    systemd:
+      name: nrpe
+      state: stopped
+      enabled: no
+    when: ansible_distribution_major_version|int == 7
+    ignore_errors: true
+
+  - name: Stop servizio nrpe e lo disabilito
+    service:
+      name: nrpe
+      state: stopped
+      enabled: no
+    ignore_errors: true
+    when: ansible_distribution_major_version|int == 6
+
+  - name: Copio i file necessari ai task
+    copy:
+      src: "files/"
+      dest: "{{ dest_app_dir }}"
+      owner: nagios
+      group: nagios
+
+#  - name: Backup vecchio file nrpe
+#    copy:
+#      src: /etc/init.d/nrpe
+#      dest: /root/nrpe_oldbackup
+#      remote_src: yes
+#      force: no
+#    ignore_errors: true
+
+  - name: Disinstallo pacchetti
+    yum:
+      name: ['nagios-common', 'nrpe']
+      state: absent
+
+  - name: Reinstallo pacchetti RHEL6
+    yum:
+      name: ["{{ dest_app_dir }}/nagios-common-4.4.3-3.el6.x86_64.rpm", "{{ dest_app_dir }}/nrpe-3.2.1-6.el6.x86_64.rpm"]
+      state: installed
+    when: ansible_distribution_major_version|int == 6
+
+  - name: Reinstallo pacchetti RHEL7
+    yum:
+      name: ["{{ dest_app_dir }}/nagios-common-4.4.3-1.el7.x86_64.rpm", "{{ dest_app_dir }}/nrpe-3.2.1-8.el7.x86_64.rpm"]
+      state: installed
+    when: ansible_distribution_major_version|int == 7
+
+  - name: Copio i file di configurazione nei rispettivi path
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      remote_src: yes
+      force: yes
+    with_items:
+      - { src: "{{ dest_app_dir }}/nrpe.cfg", dest: '/etc/nagios/' }
+      - { src: "{{ dest_app_dir }}/commands.cfg", dest: '/etc/nrpe.d/' }
+      - { src: "{{ dest_app_dir }}/commands_nrpe.cfg", dest: '/etc/nrpe.d/' }
+      - { src: "{{ dest_app_dir }}/commands_sybase.cfg", dest: '/etc/nrpe.d/' }
+
+  - name: Creazione dirs {{ base_plugins_dir }} e {{ sybase_plugins_dir }}
+    file:
+      path: "{{ item }}"
+      state: directory
+      mode: 0755
+      owner: nagios
+      group: nagios
+      recurse: yes
+    with_items:
+      - "{{ base_plugins_dir }}"
+      - "{{ sybase_plugins_dir }}"
+
+  - name: Impostazione permessi directory
+    file:
+      path: /etc/nagios/
+      state: directory
+      mode: 0755
+      owner: nagios
+      group: nagios
+      recurse: yes
+
+  - name: Commento entry nel file /usr/lib/systemd/system/nrpe.service
+    replace:
+       path: /usr/lib/systemd/system/nrpe.service
+       regexp: '^User=nrpe'
+       replace: '#User=nrpe'
+
+  - name: Commento entry nel file /usr/lib/systemd/system/nrpe.service
+    replace:
+      path: /usr/lib/systemd/system/nrpe.service
+      regexp: '^Group=nrpe'
+      replace: '#Group=nrpe'
+
+  - name: Extract dei sybase plugins into {{ sybase_plugins_dir }}
+    unarchive:
+      src: "{{ dest_app_dir }}/sybase_plug.tgz"
+      dest: "{{ sybase_plugins_dir }}"
+      remote_src: yes
+
+  - name: Extract dei base plugins into {{ base_plugins_dir }}
+    unarchive:
+      src: "{{ dest_app_dir }}/base_plugins.tgz"
+      dest: "{{ base_plugins_dir }}"
+      remote_src: yes
+
+  - name: Start servizio nrpe e abilitazione
+    systemd:
+      name: nrpe
+      state: started
+      daemon_reload: yes
+      enabled: yes
+    when: ansible_distribution_major_version|int == 7
+
+  - name: Start servizio nrpe e abilitazione
+    service:
+      name: nrpe
+      state: started
+      enabled: yes
+    when: ansible_distribution_major_version|int == 6
+
+  - name: Delete dirs /usr/local/nagios/bin/ /usr/local/nagios/etc
+    file:
+      state: absent
+      path: "{{ item }}"
+    with_items:
+      - "/usr/local/nagios/bin"
+      - "/usr/local/nagios/etc"
+
+  - name: Verifico versione
+    shell: ps -ef |grep nrpe|grep -v grep  ; /usr/sbin/nrpe -V |head -4
+    register: cmd_output
+
+  - debug: msg={{ cmd_output.stdout_lines }}

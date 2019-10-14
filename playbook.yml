@@ -1,0 +1,94 @@
+---
+- hosts: all
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+#      ansible_ssh_user: administrator
+#    ansible_ssh_pass: Password1
+#        ansible_ssh_pass: C4mb14m1!
+#        #    ansible_become_pass: Password1
+#            ansible_become_pass: C4mb14m1!
+
+  vars:
+    nagios_pwd: "$6$BIu01RT1MRNcQGqc$xOj8vJpwDosEFsLFSwBRMLjEVQdO2JKaeAeoiOjspO1CxGPP9TeD4.NGG8cqm8Z0QO1kPhULa9ePy5Em7QioD1"
+    dest_app_dir: "/tmp"
+    sybase_plugins_dir: "/usr/lib64/nagios/sybase_plugins"
+    base_plugins_dir: "/usr/lib64/nagios/base_plugins"
+#    ansible_ssh_user: "administrator"
+#    ansible_become_pass: "C4mb14m1!"
+
+  tasks:
+    - name: Write local file RH6
+      become: False
+      local_action: shell echo "{{ inventory_hostname }}" >> /tmp/lista_vm_rhel6
+      when: ansible_distribution_major_version|int == 6
+
+    - name: Write local file RH7
+      become: False
+      local_action: shell echo "{{ inventory_hostname }}" >> /tmp/lista_vm_rhel7
+      when: ansible_distribution_major_version|int == 7
+
+    - name: Creo il gruppo nagios
+      group:
+        name: nagios
+        gid: 1001
+        state: present
+
+    - name: Creo l'utente nagios con password e uid/gid
+      user:
+        name: nagios
+        group: nagios
+        uid: 1001
+        password: "{{ nagios_pwd }}"
+        state: present
+
+    - name: Imposto la password standard per l'utente nagios
+      user:
+        name: nagios
+        group: nagios
+        password: "{{ nagios_pwd }}"
+#    - name: Creo il gruppo nagios
+#      group:
+#        name: nagios
+#        gid: 1001
+#        state: present
+
+    - name: Stop servizio nrpe
+      systemd:
+       name: nrpe
+       state: stopped
+       enabled: no
+      when: ansible_distribution_major_version|int == 7
+      ignore_errors: yes
+
+    - name: Stop servizio nrpe e lo disabilito
+      service:
+        name: nrpe
+        state: stopped
+        enabled: no
+      ignore_errors: true
+      when: ansible_distribution_major_version|int == 6
+
+
+#    - name: Creo l'utente nagios con password e uid/gid
+#      user:
+#        name: nagios
+#        group: nagios
+#        uid: 1001
+#        password: "{{ nagios_pwd }}"
+##        state: present
+
+    - name: Bonifica permessi utente nagios
+      file:
+        path: "{{ item }}"
+        owner: nagios
+        group: nagios
+        recurse: yes
+      with_items:
+        - /etc/nagios
+        - /usr/lib64/nagios
+        - /var/spool/nagios
+        - /home/nagios
+
+    - include_role:
+        name: nagios
