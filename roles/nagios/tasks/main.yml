@@ -48,6 +48,11 @@
       state: installed
     when: ansible_distribution_major_version|int == 7
 
+  - name: rimuovo eventuale file commands.cfs sotto /etc/nrpe.d
+    file:
+      path: /etc/nrpe.d/commands.cfg
+      state: absent
+
   - name: Copio i file di configurazione nei rispettivi path
     copy:
       src: "{{ item.src }}"
@@ -55,8 +60,8 @@
       remote_src: yes
       force: yes
     with_items:
+      - { src: "{{ dest_app_dir }}/nrpe_log", dest: '/etc/logrotate.d/' }
       - { src: "{{ dest_app_dir }}/nrpe.cfg", dest: '/etc/nagios/' }
-      - { src: "{{ dest_app_dir }}/commands.cfg", dest: '/etc/nrpe.d/' }
       - { src: "{{ dest_app_dir }}/commands_nrpe.cfg", dest: '/etc/nrpe.d/' }
       - { src: "{{ dest_app_dir }}/commands_sybase.cfg", dest: '/etc/nrpe.d/' }
 
@@ -133,3 +138,4 @@
     register: cmd_output
 
   - debug: msg={{ cmd_output.stdout_lines }}
+

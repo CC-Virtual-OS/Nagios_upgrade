@@ -1,0 +1,10 @@
+#####Rotazione LOG NRPE######
+/var/run/nrpe.log
+{
+    missingok
+    weekly
+    compress
+    rotate 2
+    maxsize 10M
+    copytruncate
+}

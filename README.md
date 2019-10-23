@@ -11,7 +11,7 @@
  - Install nagios test plugins
  - Check nagios version
  - Risolto problema relativo allo user owner del servizio nrpe
- 
+ - Aggiunti i 2 check per Salvo
  - Remediation of file nagios user permissions in case of uid change
 
 
